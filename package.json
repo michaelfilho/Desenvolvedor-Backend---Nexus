@@ -1,0 +1,41 @@
+{
+  "name": "teste-nexus",
+  "version": "1.0.0",
+  "description": "API REST de carteira cripto simplificada para teste prático Nexus",
+  "main": "dist/servidor.js",
+  "scripts": {
+    "dev": "tsx watch src/servidor.ts",
+    "build": "tsc -p tsconfig.json",
+    "start": "node dist/servidor.js",
+    "prisma:generate": "prisma generate",
+    "prisma:migrate": "prisma migrate dev",
+    "prisma:studio": "prisma studio",
+    "seed": "tsx prisma/semente.ts"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "type": "commonjs",
+  "dependencies": {
+    "@fastify/cors": "^11.2.0",
+    "@fastify/jwt": "^10.0.0",
+    "@prisma/client": "^7.4.2",
+    "axios": "^1.13.6",
+    "bcryptjs": "^3.0.3",
+    "dotenv": "^17.3.1",
+    "fastify": "^5.8.2",
+    "fastify-plugin": "^5.1.0",
+    "jsonwebtoken": "^9.0.3",
+    "zod": "^4.3.6"
+  },
+  "devDependencies": {
+    "@prisma/adapter-pg": "^7.4.2",
+    "@types/jsonwebtoken": "^9.0.10",
+    "@types/node": "^25.4.0",
+    "@types/pg": "^8.18.0",
+    "pg": "^8.20.0",
+    "prisma": "^7.4.2",
+    "tsx": "^4.21.0",
+    "typescript": "^5.9.3"
+  }
+}

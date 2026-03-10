@@ -1,0 +1,38 @@
+{
+	"version": "2.0.0",
+	"tasks": [
+		{
+			"label": "install-prisma-adapter",
+			"type": "shell",
+			"command": "npm",
+			"args": [
+				"install",
+				"pg",
+				"@prisma/adapter-pg",
+				"-D",
+				"@types/pg"
+			],
+			"isBackground": false
+		},
+		{
+			"label": "build-project",
+			"type": "shell",
+			"command": "npm",
+			"args": [
+				"run",
+				"prisma:generate"
+			],
+			"isBackground": false
+		},
+		{
+			"label": "build-ts",
+			"type": "shell",
+			"command": "npm",
+			"args": [
+				"run",
+				"build"
+			],
+			"isBackground": false
+		}
+	]
+}

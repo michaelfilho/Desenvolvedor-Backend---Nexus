@@ -1,0 +1,117 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+// Looking for ways to speed up your queries, or scale easily with your serverless or edge functions?
+// Try Prisma Accelerate: https://pris.ly/cli/accelerate-init
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+enum Token {
+  BRL
+  BTC
+  ETH
+}
+
+enum MovementType {
+  DEPOSIT
+  SWAP_IN
+  SWAP_OUT
+  SWAP_FEE
+  WITHDRAWAL
+}
+
+enum TransactionType {
+  DEPOSIT
+  SWAP
+  WITHDRAWAL
+}
+
+model User {
+  id           String           @id @default(cuid())
+  email        String           @unique
+  passwordHash String
+  createdAt    DateTime         @default(now())
+  updatedAt    DateTime         @updatedAt
+  wallet       Wallet?
+  sessions     RefreshSession[]
+}
+
+model Wallet {
+  id           String           @id @default(cuid())
+  userId       String           @unique
+  createdAt    DateTime         @default(now())
+  updatedAt    DateTime         @updatedAt
+  user         User             @relation(fields: [userId], references: [id], onDelete: Cascade)
+  balances     WalletBalance[]
+  movements    LedgerMovement[]
+  transactions Transaction[]
+}
+
+model WalletBalance {
+  id        String   @id @default(cuid())
+  walletId  String
+  token     Token
+  amount    Decimal  @db.Decimal(30, 10)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  wallet    Wallet   @relation(fields: [walletId], references: [id], onDelete: Cascade)
+
+  @@unique([walletId, token])
+}
+
+model LedgerMovement {
+  id              String       @id @default(cuid())
+  walletId        String
+  transactionId   String?
+  type            MovementType
+  token           Token
+  amount          Decimal      @db.Decimal(30, 10)
+  previousBalance Decimal      @db.Decimal(30, 10)
+  newBalance      Decimal      @db.Decimal(30, 10)
+  metadata        Json?
+  createdAt       DateTime     @default(now())
+  wallet          Wallet       @relation(fields: [walletId], references: [id], onDelete: Cascade)
+  transaction     Transaction? @relation(fields: [transactionId], references: [id], onDelete: SetNull)
+}
+
+model Transaction {
+  id              String           @id @default(cuid())
+  walletId         String
+  type             TransactionType
+  sourceToken      Token?
+  destinationToken Token?
+  sourceAmount     Decimal?         @db.Decimal(30, 10)
+  destinationAmount Decimal?        @db.Decimal(30, 10)
+  feeToken         Token?
+  feeAmount        Decimal?         @db.Decimal(30, 10)
+  externalReference String?
+  createdAt        DateTime         @default(now())
+  wallet           Wallet           @relation(fields: [walletId], references: [id], onDelete: Cascade)
+  movements        LedgerMovement[]
+}
+
+model DepositWebhookEvent {
+  id             String   @id @default(cuid())
+  idempotencyKey String   @unique
+  userId         String
+  token          Token
+  amount         Decimal  @db.Decimal(30, 10)
+  transactionId  String
+  createdAt      DateTime @default(now())
+}
+
+model RefreshSession {
+  id               String   @id @default(cuid())
+  userId           String
+  refreshTokenHash String
+  expiresAt        DateTime
+  revokedAt        DateTime?
+  createdAt        DateTime @default(now())
+  user             User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+}

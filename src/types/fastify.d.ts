@@ -1,0 +1,20 @@
+﻿import "fastify";
+import type { FastifyReply, FastifyRequest } from "fastify";
+
+declare module "fastify" {
+  interface FastifyInstance {
+    authenticate: (request: FastifyRequest, reply: FastifyReply) => Promise<void>;
+  }
+
+  interface FastifyRequest {
+    authUser: {
+      sub: string;
+      email: string;
+      type: "access";
+      iat?: number;
+      exp?: number;
+    };
+  }
+}
+
+
