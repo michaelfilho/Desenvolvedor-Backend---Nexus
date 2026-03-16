@@ -1,4 +1,6 @@
-﻿import fastify from "fastify";
+﻿import { readFile } from "node:fs/promises";
+import { join } from "node:path";
+import fastify from "fastify";
 import cors from "@fastify/cors";
 import { Prisma } from "@prisma/client";
 import type { FastifyReply, FastifyRequest } from "fastify";
@@ -15,6 +17,17 @@ import { withdrawalRoutes } from "./rotas/saques";
 import { AppError } from "./lib/erros";
 import { prisma } from "./lib/cliente_prisma";
 import { env } from "./config/ambiente";
+
+const publicDirectory = join(process.cwd(), "public");
+
+async function sendPublicAsset(reply: FastifyReply, fileName: string, contentType: string) {
+  try {
+    const asset = await readFile(join(publicDirectory, fileName), "utf8");
+    return reply.type(contentType).send(asset);
+  } catch {
+    return reply.status(404).send({ message: "Asset not found" });
+  }
+}
 
 export async function buildApp() {
   const app = fastify({ logger: true });
@@ -54,6 +67,9 @@ export async function buildApp() {
   });
 
   app.get("/health", async () => ({ status: "ok", timestamp: new Date().toISOString() }));
+  app.get("/", async (_request, reply) => sendPublicAsset(reply, "index.html", "text/html; charset=utf-8"));
+  app.get("/app.css", async (_request, reply) => sendPublicAsset(reply, "app.css", "text/css; charset=utf-8"));
+  app.get("/app.js", async (_request, reply) => sendPublicAsset(reply, "app.js", "application/javascript; charset=utf-8"));
 
   await app.register(authRoutes);
   await app.register(walletRoutes);

@@ -1,0 +1,248 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Nexus Wallet</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;700&family=IBM+Plex+Mono:wght@400;500&display=swap"
+      rel="stylesheet"
+    />
+    <link rel="stylesheet" href="/app.css" />
+  </head>
+  <body>
+    <div class="page-shell">
+      <header class="hero">
+        <div>
+          <p class="eyebrow">Nexus Wallet Console</p>
+          <h1>Painel operacional para autenticação, saldo, swap e auditoria.</h1>
+          <p class="hero-copy">
+            Interface enxuta para testar toda a API de carteira cripto sem Postman. O frontend usa a própria origem da API.
+          </p>
+        </div>
+        <div class="hero-status">
+          <div class="status-pill" id="health-status">Verificando API...</div>
+          <div class="session-card">
+            <p class="label">Usuário atual</p>
+            <p class="session-value" id="current-user">Nenhuma sessão ativa</p>
+            <div class="session-actions">
+              <button class="ghost" id="refresh-session-button" type="button">Refresh token</button>
+              <button class="ghost danger" id="logout-button" type="button">Encerrar sessão</button>
+            </div>
+          </div>
+        </div>
+      </header>
+
+      <main class="layout-grid">
+        <section class="flash-bar is-neutral" id="flash-message" aria-live="polite">
+          Interface pronta. Faça login para habilitar as operações protegidas.
+        </section>
+
+        <section class="panel auth-panel">
+          <div class="panel-heading">
+            <div>
+              <p class="eyebrow">Acesso</p>
+              <h2>Entrar ou registrar</h2>
+            </div>
+            <div class="tabset" role="tablist" aria-label="Ações de autenticação">
+              <button class="tab is-active" type="button" data-auth-mode="login">Login</button>
+              <button class="tab" type="button" data-auth-mode="register">Cadastro</button>
+            </div>
+          </div>
+
+          <form id="auth-form" class="stack">
+            <label>
+              <span>Email</span>
+              <input id="auth-email" name="email" type="email" placeholder="demo@nexus.com" required />
+            </label>
+            <label>
+              <span>Senha</span>
+              <input id="auth-password" name="password" type="password" minlength="8" placeholder="12345678" required />
+            </label>
+            <button class="primary" id="auth-submit" type="submit">Entrar</button>
+          </form>
+
+          <div class="hint-box actions-hint">
+            <p class="label">Conta seed</p>
+            <p>Use <strong>demo@nexus.com</strong> e <strong>12345678</strong> se o seed já foi executado.</p>
+            <button class="ghost" id="fill-demo-button" type="button">Preencher demo</button>
+          </div>
+        </section>
+
+        <section class="panel balances-panel">
+          <div class="panel-heading">
+            <div>
+              <p class="eyebrow">Carteira</p>
+              <h2>Saldos atuais</h2>
+            </div>
+            <button class="ghost" id="reload-dashboard-button" type="button">Atualizar dados</button>
+          </div>
+          <div class="balance-grid" id="balances-grid">
+            <article class="balance-card accent-brl">
+              <p class="token">BRL</p>
+              <p class="amount">--</p>
+            </article>
+            <article class="balance-card accent-btc">
+              <p class="token">BTC</p>
+              <p class="amount">--</p>
+            </article>
+            <article class="balance-card accent-eth">
+              <p class="token">ETH</p>
+              <p class="amount">--</p>
+            </article>
+          </div>
+        </section>
+
+        <section class="panel operations-panel">
+          <div class="panel-heading">
+            <div>
+              <p class="eyebrow">Operações</p>
+              <h2>Depósito, cotação, swap e saque</h2>
+            </div>
+          </div>
+
+          <div class="operations-grid">
+            <form class="operation-card" id="deposit-form">
+              <h3>Depósito por webhook</h3>
+              <label>
+                <span>Token</span>
+                <select name="token">
+                  <option>BRL</option>
+                  <option>BTC</option>
+                  <option>ETH</option>
+                </select>
+              </label>
+              <label>
+                <span>Valor</span>
+                <input name="amount" type="text" placeholder="100.50" required />
+              </label>
+              <label>
+                <span>Idempotency key</span>
+                <input name="idempotencyKey" type="text" placeholder="deposito-001" required />
+              </label>
+              <button class="primary" type="submit">Processar depósito</button>
+            </form>
+
+            <form class="operation-card" id="swap-form">
+              <h3>Cotação e swap</h3>
+              <div class="inline-fields">
+                <label>
+                  <span>Origem</span>
+                  <select name="fromToken">
+                    <option>BRL</option>
+                    <option>BTC</option>
+                    <option>ETH</option>
+                  </select>
+                </label>
+                <label>
+                  <span>Destino</span>
+                  <select name="toToken">
+                    <option>BTC</option>
+                    <option>ETH</option>
+                    <option>BRL</option>
+                  </select>
+                </label>
+              </div>
+              <label>
+                <span>Valor</span>
+                <input name="amount" type="text" placeholder="0.50" required />
+              </label>
+              <div class="button-row">
+                <button class="ghost" type="button" id="quote-button">Gerar cotação</button>
+                <button class="primary" type="submit">Executar swap</button>
+              </div>
+              <div class="result-box" id="quote-result">Nenhuma cotação gerada.</div>
+            </form>
+
+            <form class="operation-card" id="withdraw-form">
+              <h3>Saque</h3>
+              <label>
+                <span>Token</span>
+                <select name="token">
+                  <option>BRL</option>
+                  <option>BTC</option>
+                  <option>ETH</option>
+                </select>
+              </label>
+              <label>
+                <span>Valor</span>
+                <input name="amount" type="text" placeholder="50" required />
+              </label>
+              <button class="primary" type="submit">Solicitar saque</button>
+            </form>
+          </div>
+        </section>
+
+        <section class="panel table-panel">
+          <div class="panel-heading">
+            <div>
+              <p class="eyebrow">Auditoria</p>
+              <h2>Extrato do ledger</h2>
+            </div>
+          </div>
+          <div class="table-wrap">
+            <table>
+              <thead>
+                <tr>
+                  <th>Tipo</th>
+                  <th>Token</th>
+                  <th>Valor</th>
+                  <th>Saldo antes</th>
+                  <th>Saldo depois</th>
+                  <th>Quando</th>
+                </tr>
+              </thead>
+              <tbody id="ledger-table-body">
+                <tr>
+                  <td colspan="6" class="empty-state">Faça login para carregar o ledger.</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </section>
+
+        <section class="panel table-panel">
+          <div class="panel-heading">
+            <div>
+              <p class="eyebrow">Histórico</p>
+              <h2>Transações</h2>
+            </div>
+          </div>
+          <div class="table-wrap">
+            <table>
+              <thead>
+                <tr>
+                  <th>Tipo</th>
+                  <th>Origem</th>
+                  <th>Destino</th>
+                  <th>Taxa</th>
+                  <th>Referência</th>
+                  <th>Quando</th>
+                </tr>
+              </thead>
+              <tbody id="transactions-table-body">
+                <tr>
+                  <td colspan="6" class="empty-state">Faça login para carregar as transações.</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </section>
+
+        <section class="panel log-panel">
+          <div class="panel-heading">
+            <div>
+              <p class="eyebrow">Console</p>
+              <h2>Respostas da API</h2>
+            </div>
+          </div>
+          <pre id="console-output">Aguardando interação.</pre>
+        </section>
+      </main>
+    </div>
+
+    <script src="/app.js" defer></script>
+  </body>
+</html>

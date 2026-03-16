@@ -2,6 +2,8 @@
 
 API REST para carteira cripto simplificada, desenvolvida para o teste prático de Backend (Nexus).
 
+O repositório agora também inclui um frontend estático para operar a carteira pelo navegador.
+
 O projeto prioriza:
 
 - modelagem consistente de dados
@@ -25,10 +27,11 @@ O projeto prioriza:
 
 - Node.js + TypeScript
 - Fastify
-- PostgreSQL
+- SQLite
 - Prisma ORM (v7)
 - Zod (validação)
 - JWT (access/refresh)
+- Frontend estático em HTML, CSS e JavaScript puro
 
 ## Estrutura do projeto
 
@@ -60,6 +63,10 @@ src/
 prisma/
   schema.prisma
   semente.ts
+public/
+  index.html
+  app.css
+  app.js
 ```
 
 ## Modelagem de banco
@@ -111,14 +118,13 @@ prisma/
 ## Pré-requisitos
 
 - Node.js 20+
-- PostgreSQL ativo
 
 ## Configuração de ambiente
 
 Arquivo `.env.example`:
 
 ```env
-DATABASE_URL="postgresql://postgres:postgres@localhost:5432/nexus_wallet?schema=public"
+DATABASE_URL="file:./prisma/dev.db"
 PORT="3000"
 JWT_ACCESS_SECRET="change_this_access_secret_with_32_plus_chars"
 JWT_REFRESH_SECRET="change_this_refresh_secret_with_32_plus_chars"
@@ -141,10 +147,10 @@ npm install
 npm run prisma:generate
 ```
 
-3. Aplicar migration
+3. Aplicar schema no SQLite
 
 ```bash
-npm run prisma:migrate -- --name init
+npm run prisma:migrate
 ```
 
 4. (Opcional) Popular banco com dados fictícios
@@ -165,6 +171,12 @@ npm run dev
 GET http://localhost:3000/health
 ```
 
+7. Abrir o frontend
+
+```bash
+http://localhost:3000/
+```
+
 ## Dados fictícios (seed)
 
 Script: `prisma/semente.ts`
@@ -177,6 +189,12 @@ O seed cria um usuário para testes:
 Além disso, cria saldo inicial e lançamentos de ledger/transações para facilitar validação de extrato e histórico.
 
 ## Endpoints
+
+## Frontend
+
+- A interface está disponível em `/`
+- O frontend usa a mesma origem da API, então não exige configuração extra local
+- A tela cobre login, cadastro, refresh token, saldos, depósito, cotação, swap, saque, ledger e transações
 
 ### Autenticação
 
@@ -260,13 +278,13 @@ Payload exemplo:
 - `npm run build`: validação TypeScript e build
 - `npm start`: execução em produção
 - `npm run prisma:generate`: regenerar cliente Prisma
-- `npm run prisma:migrate`: criar/aplicar migration
+- `npm run prisma:migrate`: sincronizar schema no SQLite local
 - `npm run prisma:studio`: abrir Prisma Studio
 - `npm run seed`: inserir dados de teste
 
 ## Observação sobre Prisma 7
 
-Este projeto usa Prisma 7 com adapter PostgreSQL (`@prisma/adapter-pg`) na inicialização do cliente (`src/lib/cliente_prisma.ts`).
+Este projeto usa Prisma 7 com SQLite local (`file:./prisma/dev.db`) na inicialização do cliente (`src/lib/cliente_prisma.ts`).
 
 ## Próximos diferenciais sugeridos
 
