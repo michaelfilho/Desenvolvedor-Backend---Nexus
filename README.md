@@ -1,41 +1,39 @@
 # Nexus Wallet API
 
-API REST para carteira cripto simplificada, desenvolvida para o teste prático de Backend (Nexus).
+API REST para carteira cripto simplificada, com frontend estático para operação via navegador.
 
-O repositório agora também inclui um frontend estático para operar a carteira pelo navegador.
+## Visão geral
 
-O projeto prioriza:
-
-- modelagem consistente de dados
-- rastreabilidade de saldo via ledger
-- regras de negócio transacionais
-- clareza de código e documentação
-
-## Resumo funcional
-
-- Autenticação com cadastro, login, access token e refresh token
-- Carteira criada automaticamente no cadastro
-- Suporte a `BRL`, `BTC`, `ETH`
+- Cadastro, login, access token e refresh token
+- Carteira criada automaticamente por usuário
+- Saldos em `BRL`, `BTC`, `ETH`
 - Depósito via webhook com idempotência
-- Cotação de swap com CoinGecko + taxa fixa de 1.5%
-- Execução de swap com débito/crédito e lançamento no ledger
+- Cotação e execução de swap com taxa fixa de 1.5%
 - Saque com validação de saldo
-- Extrato de movimentações (ledger) com paginação
-- Histórico de transações com paginação
+- Ledger auditável e histórico de transações com paginação
 
 ## Stack
 
 - Node.js + TypeScript
 - Fastify
-- SQLite
-- Prisma ORM (v7)
-- Zod (validação)
-- JWT (access/refresh)
-- Frontend estático em HTML, CSS e JavaScript puro
+- Prisma ORM v7
+- PostgreSQL (Neon em produção)
+- Zod
+- JWT
+- Frontend estático (HTML, CSS e JS)
 
-## Estrutura do projeto
+## Estrutura
 
 ```text
+api/
+  index.ts
+prisma/
+  schema.prisma
+  semente.ts
+public/
+  index.html
+  app.css
+  app.js
 src/
   aplicacao.ts
   servidor.ts
@@ -58,73 +56,14 @@ src/
     saques.ts
     transacoes.ts
     webhooks_deposito.ts
-  types/
-    fastify.d.ts
-prisma/
-  schema.prisma
-  semente.ts
-public/
-  index.html
-  app.css
-  app.js
 ```
 
-## Modelagem de banco
+## Variáveis de ambiente
 
-### Entidades
-
-- `User`: usuário e credenciais (email único + hash de senha)
-- `Wallet`: carteira 1:1 com usuário
-- `WalletBalance`: saldo atual por token (`walletId + token` único)
-- `LedgerMovement`: trilha auditável de toda alteração de saldo
-- `Transaction`: agrupamento da operação de negócio (DEPOSIT/SWAP/WITHDRAWAL)
-- `DepositWebhookEvent`: idempotência para depósito externo
-- `RefreshSession`: controle de refresh token com rotação/revogação
-
-### Enums
-
-- `Token`: `BRL | BTC | ETH`
-- `MovementType`: `DEPOSIT | SWAP_IN | SWAP_OUT | SWAP_FEE | WITHDRAWAL`
-- `TransactionType`: `DEPOSIT | SWAP | WITHDRAWAL`
-
-## Decisões técnicas
-
-- Fastify para API enxuta, rápida e com bom ecossistema de plugins.
-- Prisma para tipagem forte e transações consistentes.
-- Estratégia de auditoria com:
-  - estado atual em `WalletBalance` (leitura rápida)
-  - histórico completo em `LedgerMovement` (rastreabilidade)
-- Refresh token com sessão no banco para permitir rotação e revogação.
-- Uso de `Decimal` (Prisma) para evitar erros de ponto flutuante em valores financeiros.
-- Validação de entrada com Zod antes das regras de negócio.
-
-## Regras de negócio principais
-
-- Cadastro cria carteira com 3 saldos iniciais zerados: BRL/BTC/ETH.
-- Depósito (`/webhooks/deposit`):
-  - valida usuário e token
-  - valida `idempotencyKey` única
-  - cria `Transaction` do tipo `DEPOSIT`
-  - cria `LedgerMovement` do tipo `DEPOSIT`
-- Swap:
-  - cotação em tempo real via CoinGecko
-  - taxa fixa de 1.5%
-  - execução gera 3 movimentos (`SWAP_OUT`, `SWAP_FEE`, `SWAP_IN`)
-- Saque:
-  - valida saldo suficiente
-  - debita saldo
-  - registra transação e movimento
-
-## Pré-requisitos
-
-- Node.js 20+
-
-## Configuração de ambiente
-
-Arquivo `.env.example`:
+Use o modelo abaixo no `.env`:
 
 ```env
-DATABASE_URL="file:./prisma/dev.db"
+DATABASE_URL="postgresql://user:password@host:5432/database?sslmode=require"
 PORT="3000"
 JWT_ACCESS_SECRET="change_this_access_secret_with_32_plus_chars"
 JWT_REFRESH_SECRET="change_this_refresh_secret_with_32_plus_chars"
@@ -133,68 +72,62 @@ JWT_REFRESH_EXPIRES_IN="7d"
 COINGECKO_BASE_URL="https://api.coingecko.com/api/v3"
 ```
 
-## Como rodar localmente
+## Rodando localmente
 
-1. Instalar dependências
+1. Instale dependências
 
 ```bash
 npm install
 ```
 
-2. Gerar Prisma Client
+2. Gere o Prisma Client
 
 ```bash
 npm run prisma:generate
 ```
 
-3. Aplicar schema no SQLite
+3. Sincronize o schema no banco
 
 ```bash
 npm run prisma:migrate
 ```
 
-4. (Opcional) Popular banco com dados fictícios
+4. (Opcional) Rode o seed
 
 ```bash
 npm run seed
 ```
 
-5. Subir API
+5. Suba a API
 
 ```bash
 npm run dev
 ```
 
-6. Health check
+6. Acesse
 
-```bash
-GET http://localhost:3000/health
-```
+- API health: `http://localhost:3000/health`
+- Frontend: `http://localhost:3000/`
 
-7. Abrir o frontend
-
-```bash
-http://localhost:3000/
-```
-
-## Dados fictícios (seed)
-
-Script: `prisma/semente.ts`
-
-O seed cria um usuário para testes:
+## Conta de teste (seed)
 
 - Email: `demo@nexus.com`
 - Senha: `12345678`
 
-Além disso, cria saldo inicial e lançamentos de ledger/transações para facilitar validação de extrato e histórico.
+## Deploy na Vercel (Neon)
+
+1. Crie um banco PostgreSQL no Neon.
+2. Configure as variáveis na Vercel (Settings > Environment Variables):
+   - `DATABASE_URL`
+   - `JWT_ACCESS_SECRET`
+   - `JWT_REFRESH_SECRET`
+   - `JWT_ACCESS_EXPIRES_IN`
+   - `JWT_REFRESH_EXPIRES_IN`
+   - `COINGECKO_BASE_URL`
+3. Faça redeploy.
+4. Garanta que o schema esteja aplicado no banco remoto com `npm run prisma:migrate`.
 
 ## Endpoints
-
-## Frontend
-
-- A interface está disponível em `/`
-- O frontend usa a mesma origem da API, então não exige configuração extra local
-- A tela cobre login, cadastro, refresh token, saldos, depósito, cotação, swap, saque, ledger e transações
 
 ### Autenticação
 
@@ -206,11 +139,11 @@ Além disso, cria saldo inicial e lançamentos de ledger/transações para facil
 
 - `GET /wallet/balances` (protegida)
 
-### Webhook de depósito
+### Depósito
 
 - `POST /webhooks/deposit`
 
-Payload exemplo:
+Payload:
 
 ```json
 {
@@ -221,12 +154,12 @@ Payload exemplo:
 }
 ```
 
-### Conversão (swap)
+### Swap
 
 - `POST /swap/quote` (protegida)
 - `POST /swap` (protegida)
 
-Payload exemplo:
+Payload:
 
 ```json
 {
@@ -236,11 +169,11 @@ Payload exemplo:
 }
 ```
 
-### Saques
+### Saque
 
 - `POST /withdrawals` (protegida)
 
-Payload exemplo:
+Payload:
 
 ```json
 {
@@ -254,42 +187,24 @@ Payload exemplo:
 - `GET /ledger?page=1&pageSize=20` (protegida)
 - `GET /transactions?page=1&pageSize=20` (protegida)
 
-## Fluxo de teste rápido (manual)
+## Frontend
 
-1. Registrar usuário (`/auth/register`)
-2. Salvar `accessToken` retornado
-3. Chamar `/wallet/balances` com `Authorization: Bearer <token>`
-4. Simular depósito em `/webhooks/deposit`
-5. Consultar cotação em `/swap/quote`
-6. Executar `/swap`
-7. Solicitar `/withdrawals`
-8. Consultar `/ledger` e `/transactions`
+Tela disponível em `/`, com operações de:
 
-## Erros esperados e tratamento
-
-- `401 Unauthorized`: token ausente/inválido
-- `404 Not Found`: carteira/usuário não encontrados
-- `409 Conflict`: `idempotencyKey` duplicada ou conflito de unicidade
-- `400 Bad Request`: validação de payload ou saldo insuficiente
+- login/cadastro
+- refresh/logout
+- consulta de saldos
+- depósito
+- cotação e swap
+- saque
+- visualização de ledger e transações
 
 ## Comandos úteis
 
-- `npm run dev`: desenvolvimento com watch
-- `npm run build`: validação TypeScript e build
-- `npm start`: execução em produção
-- `npm run prisma:generate`: regenerar cliente Prisma
-- `npm run prisma:migrate`: sincronizar schema no SQLite local
-- `npm run prisma:studio`: abrir Prisma Studio
-- `npm run seed`: inserir dados de teste
-
-## Observação sobre Prisma 7
-
-Este projeto usa Prisma 7 com SQLite local (`file:./prisma/dev.db`) na inicialização do cliente (`src/lib/cliente_prisma.ts`).
-
-## Próximos diferenciais sugeridos
-
-- Cache de cotações com Redis
-- Testes automatizados (unitário e integração)
-- Rate limiting para rotas sensíveis
-- Documentação OpenAPI/Swagger
-- Deploy em ambiente público (Railway/Render)
+- `npm run dev`
+- `npm run build`
+- `npm start`
+- `npm run prisma:generate`
+- `npm run prisma:migrate`
+- `npm run prisma:studio`
+- `npm run seed`

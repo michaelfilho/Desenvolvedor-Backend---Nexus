@@ -3,7 +3,7 @@ generator client {
 }
 
 datasource db {
-  provider = "sqlite"
+  provider = "postgresql"
 }
 
 enum Token {
@@ -51,7 +51,7 @@ model WalletBalance {
   id        String   @id @default(cuid())
   walletId  String
   token     Token
-  amount    Decimal
+  amount    Decimal  @db.Decimal(30, 10)
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
   wallet    Wallet   @relation(fields: [walletId], references: [id], onDelete: Cascade)
@@ -65,9 +65,9 @@ model LedgerMovement {
   transactionId   String?
   type            MovementType
   token           Token
-  amount          Decimal
-  previousBalance Decimal
-  newBalance      Decimal
+  amount          Decimal      @db.Decimal(30, 10)
+  previousBalance Decimal      @db.Decimal(30, 10)
+  newBalance      Decimal      @db.Decimal(30, 10)
   metadata        Json?
   createdAt       DateTime     @default(now())
   wallet          Wallet       @relation(fields: [walletId], references: [id], onDelete: Cascade)
@@ -80,10 +80,10 @@ model Transaction {
   type             TransactionType
   sourceToken      Token?
   destinationToken Token?
-  sourceAmount     Decimal?
-  destinationAmount Decimal?
+  sourceAmount     Decimal?         @db.Decimal(30, 10)
+  destinationAmount Decimal?        @db.Decimal(30, 10)
   feeToken         Token?
-  feeAmount        Decimal?
+  feeAmount        Decimal?         @db.Decimal(30, 10)
   externalReference String?
   createdAt        DateTime         @default(now())
   wallet           Wallet           @relation(fields: [walletId], references: [id], onDelete: Cascade)
@@ -95,7 +95,7 @@ model DepositWebhookEvent {
   idempotencyKey String   @unique
   userId         String
   token          Token
-  amount         Decimal
+  amount         Decimal  @db.Decimal(30, 10)
   transactionId  String
   createdAt      DateTime @default(now())
 }

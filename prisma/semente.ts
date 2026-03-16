@@ -1,7 +1,8 @@
 import "dotenv/config";
 import bcrypt from "bcryptjs";
 import { PrismaClient, MovementType, Token, TransactionType } from "@prisma/client";
-import { PrismaBetterSqlite3 } from "@prisma/adapter-better-sqlite3";
+import { PrismaPg } from "@prisma/adapter-pg";
+import { Pool } from "pg";
 
 const databaseUrl = process.env.DATABASE_URL;
 
@@ -9,9 +10,11 @@ if (!databaseUrl) {
   throw new Error("DATABASE_URL nao definido");
 }
 
-const adapter = new PrismaBetterSqlite3({
-  url: databaseUrl
+const pool = new Pool({
+  connectionString: databaseUrl
 });
+
+const adapter = new PrismaPg(pool);
 
 const prisma = new PrismaClient({ adapter });
 
@@ -181,4 +184,5 @@ semear()
   })
   .finally(async () => {
     await prisma.$disconnect();
+    await pool.end();
   });

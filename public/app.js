@@ -124,10 +124,7 @@ async function handleRefresh() {
 
   try {
     setButtonBusy(elements.refreshSessionButton, true, "Atualizando...");
-    const response = await apiFetch("/auth/refresh", {
-      method: "POST",
-      body: JSON.stringify({ refreshToken: state.session.refreshToken })
-    }, false);
+    const response = await refreshSessionToken();
 
     state.session = {
       ...state.session,
@@ -194,6 +191,7 @@ async function loadDashboard() {
 
 async function handleDeposit(event) {
   event.preventDefault();
+  const form = event.currentTarget;
 
   if (!state.session?.user?.id) {
     logToConsole({ message: "Login necessario para derivar o userId do deposito" }, "Deposito bloqueado");
@@ -201,7 +199,7 @@ async function handleDeposit(event) {
     return;
   }
 
-  const formData = new FormData(event.currentTarget);
+  const formData = new FormData(form);
   const payload = {
     userId: state.session.user.id,
     token: String(formData.get("token")),
@@ -209,7 +207,7 @@ async function handleDeposit(event) {
     idempotencyKey: String(formData.get("idempotencyKey")).trim()
   };
 
-  const submitButton = event.currentTarget.querySelector('button[type="submit"]');
+  const submitButton = form.querySelector('button[type="submit"]');
 
   try {
     setButtonBusy(submitButton, true, "Processando...");
@@ -218,7 +216,7 @@ async function handleDeposit(event) {
       body: JSON.stringify(payload)
     }, false);
 
-    event.currentTarget.reset();
+    form.reset();
     initializeDepositKey();
     logToConsole(response, "Deposito processado");
     showFlash("Depósito processado com sucesso.", "success");
@@ -226,6 +224,10 @@ async function handleDeposit(event) {
   } catch (error) {
     logToConsole(error, "Deposito falhou");
     showFlash(readErrorMessage(error), "error");
+
+    if (isIdempotencyConflict(error)) {
+      initializeDepositKey();
+    }
   } finally {
     setButtonBusy(submitButton, false, "Processar depósito");
   }
@@ -434,6 +436,42 @@ async function apiFetch(path, options = {}, requiresAuth = true) {
   const raw = await response.text();
   const data = raw ? safeJsonParse(raw) : null;
 
+  if (response.status === 401 && requiresAuth && state.session?.refreshToken) {
+    try {
+      const refreshed = await refreshSessionToken();
+      state.session = {
+        ...state.session,
+        accessToken: refreshed.accessToken,
+        refreshToken: refreshed.refreshToken
+      };
+      saveSession();
+      updateSessionUi();
+
+      const retryHeaders = {
+        "Content-Type": "application/json",
+        ...(options.headers || {}),
+        Authorization: `Bearer ${state.session.accessToken}`
+      };
+
+      const retryResponse = await fetch(path, {
+        ...options,
+        headers: retryHeaders
+      });
+
+      const retryRaw = await retryResponse.text();
+      const retryData = retryRaw ? safeJsonParse(retryRaw) : null;
+
+      if (!retryResponse.ok) {
+        throw retryData || { message: `HTTP ${retryResponse.status}` };
+      }
+
+      return retryData;
+    } catch {
+      handleLogout();
+      throw data || { message: "Sessao expirada. Faca login novamente." };
+    }
+  }
+
   if (!response.ok) {
     throw data || { message: `HTTP ${response.status}` };
   }
@@ -475,7 +513,16 @@ function loadSession() {
 
 function initializeDepositKey() {
   const field = elements.depositForm.querySelector('input[name="idempotencyKey"]');
-  field.value = `deposit-${Date.now()}`;
+  field.value = generateIdempotencyKey();
+}
+
+function generateIdempotencyKey() {
+  if (typeof crypto !== "undefined" && typeof crypto.randomUUID === "function") {
+    return `deposit-${crypto.randomUUID()}`;
+  }
+
+  const random = Math.random().toString(36).slice(2, 10);
+  return `deposit-${Date.now()}-${random}`;
 }
 
 function formatQuote(quote) {
@@ -517,6 +564,23 @@ function readErrorMessage(error) {
   }
 
   return "Erro desconhecido";
+}
+
+function isIdempotencyConflict(error) {
+  const message = String(error?.message || "").toLowerCase();
+  const code = String(error?.code || "").toUpperCase();
+  return message.includes("idempotency") || code.includes("IDEMPOTENCY");
+}
+
+async function refreshSessionToken() {
+  return apiFetch(
+    "/auth/refresh",
+    {
+      method: "POST",
+      body: JSON.stringify({ refreshToken: state.session.refreshToken })
+    },
+    false
+  );
 }
 
 function logToConsole(payload, label) {
